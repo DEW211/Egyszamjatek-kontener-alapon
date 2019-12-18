@@ -1,0 +1,69 @@
+version: '3'
+services:
+    apigateway:
+        image: traefik:v2.0.1
+        ports:
+            - "5080:80"
+            - "5088:8080"
+        command:
+            - "--api.insecure=true"
+            - "--api.dashboard=true"
+            - "--providers.docker=true"
+            - "--providers.docker.exposedbydefault=false"
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events (see .env file for Windows workaround to make this work)
+        networks:
+            - gameapp-network
+
+    tipp-api:
+        image: "rnalbiacr.azurecr.io/gameapp/tipp-api:latest"
+       
+        networks: 
+            - gameapp-network
+        labels:
+            - "traefik.enable=true" # Enable publishing this service by Traefik
+            - "traefik.http.routers.tip-api.rule=PathPrefix(`/guess`)" # Routing rule
+
+    toplista-api:
+        image: "rnalbiacr.azurecr.io/gameapp/toplista-api:latest"
+        
+        networks: 
+            - gameapp-network
+        labels:
+            - "traefik.enable=true" # Enable publishing this service by Traefik
+            - "traefik.http.routers.toplista-api.rule=PathPrefix(`/toplist`)" # Routing rule
+
+    frontend:
+        image: "rnalbiacr.azurecr.io/gameapp/frontend:latest"
+        ports: 
+            - '8080:80'
+        
+        labels: 
+            - "traefik.enable=true"
+            - "traefik.http.routers.frontend.rule=PathPrefix(`/`)" # Routing rule   
+        networks: 
+            - gameapp-network
+
+    kiertekelo:
+        image: "rnalbiacr.azurecr.io/gameapp/kiertekelo:latest"
+        
+        networks: 
+            - gameapp-network
+
+
+    mongo:
+        image: mongo:4.0.12
+        ports: 
+            - '27017:27017'
+        networks: 
+            - gameapp-network
+        volumes: 
+            - gameapp-mongo-data:/data/db
+
+volumes:
+    gameapp-mongo-data:
+        driver: local
+
+networks: 
+    gameapp-network:
+        driver: bridge
